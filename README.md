@@ -9,6 +9,10 @@ This repo tracks the implementation of a limit order book in increasing complexi
 ## Basic bid and ask
 Two lists that track quantities of prices. Capable of tracking executions when prices meet limit.
 
+## Limit and Order tracking
+Built with inspiration from [this blog](https://web.archive.org/web/20110219163448/http://howtohft.wordpress.com/2011/02/15/how-to-build-a-fast-limit-order-book/).
+However, it does not attempt to
+
 ## Usage
 ### C++
 This project uses CMake with cpp (GCC) 12.2.1

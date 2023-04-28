@@ -2,7 +2,8 @@
 #define LIMITORDERBOOK_H
 
 #include <iostream>
-#include <map>
+#include <set>
+#include "Limit.h"
 
 using namespace std;
 
@@ -11,11 +12,11 @@ using namespace std;
  */
 class LimitOrderBook
 {
-    map<double, unsigned int> bids;
-    map<double, unsigned int> asks;
+    set<Limit> bids;
+    set<Limit> asks;
 public:
-    bool limit_buy(double price, unsigned int quantity);
-    bool limit_sell(double price, unsigned int quantity);
+    bool limit_buy(GUID orderId, double price, unsigned int quantity);
+    bool limit_sell(GUID orderId, double price, unsigned int quantity);
     friend ostream& operator<<(ostream& os, LimitOrderBook& book);
 };
 
