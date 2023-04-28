@@ -7,6 +7,7 @@ using namespace std;
 
 class Order;
 
+// placeholder solution because of std::set forcing constant values
 class LimitDetails
 {
     unsigned int totalVolume;
@@ -27,7 +28,7 @@ class Limit
     // unsigned int orderSize;
     // unsigned int totalVolume;
     // list<Order> orderList;
-    LimitDetails *details;
+    LimitDetails *details; // see comment on limit details class
 
 public:
     Limit(double limitPrice);
@@ -49,7 +50,7 @@ enum ORDER_TYPE { BUY = true, SELL = false };
 class Order
 {
     GUID idNumber;
-    ORDER_TYPE orderType; // else sell
+    ORDER_TYPE orderType;
     unsigned int numShares;
     // unsigned int entryTime;
     // unsigned int eventTime;
