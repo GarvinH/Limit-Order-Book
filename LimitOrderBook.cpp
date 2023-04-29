@@ -19,7 +19,7 @@ ostream& operator<<(ostream& os, LimitOrderBook& book)
 }
 
 // returns true of successfully handled order (executed or added to book)
-bool LimitOrderBook::limit_buy(GUID orderId, double price, unsigned int quantity)
+bool LimitOrderBook::limitBuy(GUID orderId, double price, unsigned int quantity)
 {
     if (price <= 0)
     {
@@ -71,7 +71,7 @@ bool LimitOrderBook::limit_buy(GUID orderId, double price, unsigned int quantity
     return true;
 }
 
-bool LimitOrderBook::limit_sell(GUID orderId, double price, unsigned int quantity)
+bool LimitOrderBook::limitSell(GUID orderId, double price, unsigned int quantity)
 {
     if (price <= 0)
     {

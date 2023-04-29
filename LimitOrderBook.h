@@ -15,8 +15,8 @@ class LimitOrderBook
     set<Limit> bids;
     set<Limit> asks;
 public:
-    bool limit_buy(GUID orderId, double price, unsigned int quantity);
-    bool limit_sell(GUID orderId, double price, unsigned int quantity);
+    bool limitBuy(GUID orderId, double price, unsigned int quantity);
+    bool limitSell(GUID orderId, double price, unsigned int quantity);
     friend ostream& operator<<(ostream& os, LimitOrderBook& book);
 };
 
