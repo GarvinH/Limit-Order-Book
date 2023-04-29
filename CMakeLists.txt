@@ -6,6 +6,8 @@ add_executable(limit-order-book
 main.cpp
 LimitOrderBook.cpp
 LimitOrderBook.h
+Limit.cpp
+Limit.h
 )
 
 install(TARGETS limit-order-book RUNTIME DESTINATION bin)
