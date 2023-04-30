@@ -1,6 +1,6 @@
 #include "LimitOrderBook.h"
 
-ostream& operator<<(ostream& os, LimitOrderBook& book)
+ostream& operator<<(ostream& os, const LimitOrderBook& book)
 {
     set<Limit>::reverse_iterator mapRit;
     for (mapRit = book.asks.rbegin(); mapRit != book.asks.rend(); ++mapRit)

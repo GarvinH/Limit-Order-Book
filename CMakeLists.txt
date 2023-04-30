@@ -3,11 +3,14 @@ cmake_minimum_required(VERSION 3.0)
 project(limit-order-book)
 
 add_executable(limit-order-book
-main.cpp
+# main.cpp
+DoubleLinkedListTests.cpp
 LimitOrderBook.cpp
 LimitOrderBook.h
 Limit.cpp
 Limit.h
+DoubleLinkedList.cpp
+DoubleLinkedList.h
 )
 
 install(TARGETS limit-order-book RUNTIME DESTINATION bin)
