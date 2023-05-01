@@ -4,12 +4,15 @@
 LimitDetails::LimitDetails()
 {
     totalVolume = 0;
+    orderSize = 0;
 }
 
 LimitDetails::LimitDetails(const LimitDetails& other)
 {
     totalVolume = other.totalVolume;
-    orderList = other.orderList;
+    orderSize = other.orderSize;
+    headOrder = other.headOrder;
+    tailOrder = other.tailOrder;
 }
 
 
@@ -32,38 +35,36 @@ Limit::~Limit()
 }
 
 
-void Limit::addOrder(const Order& order) const
+void Limit::addOrder(const Order* order) const
 {
-    details->totalVolume += order.numShares;
+    details->totalVolume += order->numShares;
 
-    details->orderList.push_back(order);
+    DoubleLinkedList::pushBack((Node**)&(details->headOrder), (Node**)&details->tailOrder, (Node*)order);
+    details->orderSize++;
 }
 
-void Limit::cancelOrder(const Order& order) const
+void Limit::cancelOrder(const Order* order) const
 {
-    list<Order>::iterator it = find(details->orderList.begin(), details->orderList.end(), order);
-    if (it != details->orderList.end())
-    {
-        details->totalVolume -= order.numShares;
-        details->orderList.erase(it);
-    }
+    DoubleLinkedList::remove((Node**)&(details->headOrder), (Node**)&details->tailOrder, (Node*)order);
+    details->orderSize--;
 }
 
 void Limit::fillOrder(unsigned int& quantity) const
 {
-    while (quantity > 0 && !details->orderList.empty())
+    while (quantity > 0 && details->orderSize > 0)
     {
-        if (details->orderList.begin()->getNumShares() > quantity)
+        if (details->headOrder->getNumShares() > quantity)
         {
-            details->orderList.begin()->numShares -= quantity;
+            details->headOrder->numShares -= quantity;
             details->totalVolume -= quantity;
             quantity = 0;
         }
         else
         {
-            quantity -= details->orderList.begin()->getNumShares();
-            details->totalVolume -= details->orderList.begin()->getNumShares();
-            details->orderList.erase(details->orderList.begin());
+            quantity -= details->headOrder->getNumShares();
+            details->totalVolume -= details->headOrder->getNumShares();
+            DoubleLinkedList::remove((Node**)&details->headOrder, (Node**)&details->tailOrder, (Node*)details->headOrder);
+            details->orderSize -= 1;
         }
     }
 }
@@ -71,7 +72,7 @@ void Limit::fillOrder(unsigned int& quantity) const
 
 unsigned int Limit::getOrderSize() const
 {
-    return details->orderList.size();
+    return details->orderSize;
 }
 
 unsigned int Limit::getTotalVolume() const

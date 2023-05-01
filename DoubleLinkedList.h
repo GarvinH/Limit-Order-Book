@@ -7,48 +7,22 @@ using namespace std;
 
 namespace DoubleLinkedList {
 
-template <typename T>
-class Node;
-
-template <typename T>
-class DLL
-{
-    Node<T> *head;
-    Node<T> *tail;
-    void popFront();
-public:
-    DLL();
-    ~DLL();
-    bool isEmpty();
-    Node<T>* peekFront();
-    Node<T>* pushBack(T data);
-    void remove(Node<T> *&node);
-
-    template <typename E>
-    friend ostream& operator<<(ostream& os, const DLL<E>& dll);
-};
-
-template <typename T>
-ostream& operator<<(ostream& os, const DLL<T>& dll);
-
 /**
  * @todo write docs
  */
-template <typename T>
 class Node
 {
-    Node<T> *prev;
-    Node<T> *next;
-    T data;
+    Node *prev;
+    Node *next;
 public:
-    Node(T data);
-    T& getData();
+    Node();
 
-    friend class DLL<T>;
-
-    template <typename E>
-    friend ostream& operator<<(ostream& os, const DLL<E>& dll);
+    friend void pushBack(Node **head, Node **tail, Node *node);
+    friend void remove(Node **head, Node **tail, Node *node);
 };
+
+void pushBack(Node **head, Node **tail, Node *node);
+void remove(Node **head, Node **tail, Node *node);
 
 }
 

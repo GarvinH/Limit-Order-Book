@@ -56,14 +56,14 @@ bool LimitOrderBook::limitBuy(GUID orderId, double price, unsigned int quantity)
 
     if (it != bids.end()) // if limit exists
     {
-        Order order(orderId, BUY, quantity, &(*it));
+        Order *order = new Order(orderId, BUY, quantity, &(*it));
 
         it->addOrder(order);;
     }
     else
     {
         Limit limit(price);
-        Order order(orderId, BUY, quantity, &limit);
+        Order *order = new Order(orderId, BUY, quantity, &limit);
         limit.addOrder(order);
         bids.insert(limit);
     }
@@ -107,14 +107,14 @@ bool LimitOrderBook::limitSell(GUID orderId, double price, unsigned int quantity
 
     if (it != asks.end()) // if limit exists
     {
-        Order order(orderId, SELL, quantity, &(*it));
+        Order *order = new Order(orderId, SELL, quantity, &(*it));
 
         it->addOrder(order);;
     }
     else
     {
         Limit limit(price);
-        Order order(orderId, SELL, quantity, &limit);
+        Order *order = new Order(orderId, SELL, quantity, &limit);
         limit.addOrder(order);
        asks.insert(limit);
     }

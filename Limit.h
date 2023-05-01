@@ -2,16 +2,20 @@
 #define LIMIT_H
 
 #include <list>
+#include "DoubleLinkedList.h"
 
 using namespace std;
+using namespace DoubleLinkedList;
 
 class Order;
 
 // placeholder solution because of std::set forcing constant values
 class LimitDetails
 {
+    unsigned int orderSize;
     unsigned int totalVolume;
-    list<Order> orderList;
+    Order *headOrder;
+    Order *tailOrder;
 public:
     LimitDetails();
     LimitDetails(const LimitDetails &other);
@@ -34,8 +38,8 @@ public:
     Limit(double limitPrice);
     Limit(const Limit &other);
     ~Limit();
-    void addOrder(const Order &order) const;
-    void cancelOrder(const Order &order) const;
+    void addOrder(const Order *order) const;
+    void cancelOrder(const Order *order) const;
     void fillOrder(unsigned int &quantity) const;
     unsigned int getOrderSize() const;
     unsigned int getTotalVolume() const;
@@ -47,7 +51,7 @@ public:
 typedef unsigned int GUID; // replace with most appropriate type for GUIDs
 enum ORDER_TYPE { BUY = true, SELL = false };
 
-class Order
+class Order: public Node
 {
     GUID idNumber;
     ORDER_TYPE orderType;
