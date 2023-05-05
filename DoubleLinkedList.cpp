@@ -24,6 +24,11 @@ void DoubleLinkedList::pushBack(DoubleLinkedList::Node ** head, DoubleLinkedList
 
 void DoubleLinkedList::remove(DoubleLinkedList::Node ** head, DoubleLinkedList::Node ** tail, DoubleLinkedList::Node* node)
 {
+    if (node->prev == nullptr && node->next == nullptr)
+    {
+        return;
+    }
+
     if (node == *head)
     {
         Node *temp = *head;
