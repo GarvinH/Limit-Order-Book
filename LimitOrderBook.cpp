@@ -1,19 +1,14 @@
 #include "LimitOrderBook.h"
 
+void onOrderFilled(GUID orderId)
+{
+
+}
+
+
 ostream& operator<<(ostream& os, const LimitOrderBook& book)
 {
-    set<Limit>::reverse_iterator mapRit;
-    for (mapRit = book.asks.rbegin(); mapRit != book.asks.rend(); ++mapRit)
-    {
-        os << mapRit->getLimitPrice() << " " << mapRit->getTotalVolume() << "\n";
-    }
 
-    os << "\n";
-
-    for (mapRit = book.bids.rbegin(); mapRit != book.bids.rend(); ++mapRit)
-    {
-        os << mapRit->getLimitPrice() << " " << mapRit->getTotalVolume() << "\n";
-    }
 
     return os;
 }
@@ -26,46 +21,12 @@ bool LimitOrderBook::limitBuy(GUID orderId, double price, unsigned int quantity)
         return false;
     }
 
+    Order *order = new Order(orderId, ORDER_TYPE::BUY, quantity, price);
+    asks.fillOrder(order, &onOrderFilled);
 
-    set<Limit>::iterator it;
-
-    // settle all fillable quantites
-    it = asks.begin();
-    while (it != asks.end() && it->getLimitPrice() <= price)
+    if (order->getNumShares() > 0)
     {
-        it->fillOrder(quantity);
-        if (it->getOrderSize() == 0)
-        {
-            asks.erase(it);
-            it = asks.begin();
-        }
-        else // left over orders on selling side means all buys are filled
-        {
-            return true;
-        }
-    }
-
-    // Leftover orders
-    for (it = bids.begin(); it != bids.end(); ++it)
-    {
-        if (it->getLimitPrice() == price)
-        {
-            break;
-        }
-    }
-
-    if (it != bids.end()) // if limit exists
-    {
-        Order *order = new Order(orderId, BUY, quantity, &(*it));
-
-        it->addOrder(order);;
-    }
-    else
-    {
-        Limit limit(price);
-        Order *order = new Order(orderId, BUY, quantity, &limit);
-        limit.addOrder(order);
-        bids.insert(limit);
+        bids.addOrder(order);
     }
 
     return true;
@@ -78,45 +39,12 @@ bool LimitOrderBook::limitSell(GUID orderId, double price, unsigned int quantity
         return false;
     }
 
-    set<Limit>::iterator it;
-    set<Limit>::reverse_iterator rit;
-    // settle all fillable quantites
-    rit = bids.rbegin();
-    while (rit != bids.rend() && rit->getLimitPrice() >= price)
-    {
-        rit->fillOrder(quantity);
-        if (rit->getOrderSize() == 0)
-        {
-            bids.erase(prev(bids.end()));
-            rit = bids.rbegin();
-        }
-        else // left over orders on selling side means all buys are filled
-        {
-            return true;
-        }
-    }
+    Order *order = new Order(orderId, ORDER_TYPE::SELL, quantity, price);
+    bids.fillOrder(order, &onOrderFilled);
 
-    // Leftover orders
-    for (it = asks.begin(); it != asks.end(); ++it)
+    if (order->getNumShares() > 0)
     {
-        if (it->getLimitPrice() == price)
-        {
-            break;
-        }
-    }
-
-    if (it != asks.end()) // if limit exists
-    {
-        Order *order = new Order(orderId, SELL, quantity, &(*it));
-
-        it->addOrder(order);;
-    }
-    else
-    {
-        Limit limit(price);
-        Order *order = new Order(orderId, SELL, quantity, &limit);
-        limit.addOrder(order);
-       asks.insert(limit);
+        asks.addOrder(order);
     }
 
     return true;

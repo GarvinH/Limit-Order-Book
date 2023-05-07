@@ -98,24 +98,38 @@ bool LimitPointerComp::operator()(const Limit* lhs, const Limit* rhs)
     return *lhs < *rhs;
 }
 
-
-
-template<ORDER_TYPE orderType> void LimitManager<orderType>::addOrder(double price, Order* order)
+template<ORDER_TYPE orderType> void LimitManager<orderType>::removeFromSet(Limit* limit)
 {
-    unordered_map<double, Limit*>::const_iterator it = priceLimitMap.find(price);
+    set<Limit*>::iterator it = find(limits.begin(), limits.end(), limit);
+    if (it != limits.end())
+    {
+        limits.erase(it);
+    }
+}
+
+
+template<ORDER_TYPE orderType> void LimitManager<orderType>::addOrder(Order* order)
+{
+    if (orderType != order->getOrderType())
+    {
+        cout << "Error: trying to add order to the wrong side of the book" << endl;
+        return;
+    }
+
+    unordered_map<double, Limit*>::const_iterator it = priceLimitMap.find(order->getLimitPrice());
 
     // limit doesn't exist yet
     if (it == priceLimitMap.end())
     {
-        Limit *limit = new Limit(price);
+        Limit *limit = new Limit(order->getLimitPrice());
         limit->addOrder(order);
 
         limits.insert(limit);
-        priceLimitMap[price] = limit;
+        priceLimitMap[order->getLimitPrice()] = limit;
     }
     else // limit exists
     {
-        Limit *limit = priceLimitMap[price];
+        Limit *limit = priceLimitMap[order->getLimitPrice()];
 
         if (limit->getOrderSize() == 0)
         {
@@ -128,6 +142,12 @@ template<ORDER_TYPE orderType> void LimitManager<orderType>::addOrder(double pri
 
 template<ORDER_TYPE orderType> void LimitManager<orderType>::cancelOrder(const Order* order)
 {
+    if (orderType != order->getOrderType())
+    {
+        cout << "Error: tried to remove an order from the wrong side of the book" << endl;
+        return;
+    }
+
     Limit *parentLimit = order->getParentLimit();
     if (parentLimit != nullptr)
     {
@@ -135,11 +155,33 @@ template<ORDER_TYPE orderType> void LimitManager<orderType>::cancelOrder(const O
 
         if (parentLimit->getOrderSize() == 0)
         {
-            set<Limit*>::iterator it = find(limits.begin(), limits.end(), parentLimit);
-            limits.erase(it);
+            removeFromSet(parentLimit);
         }
     }
 }
+
+template<ORDER_TYPE orderType> void LimitManager<orderType>::fillOrder(Order* order, void (*onFilled)(GUID orderId))
+{
+    if (orderType == order->getOrderType())
+    {
+        cout << "Error: trying to fill an order on the same side of the book" << endl;
+        return;
+    }
+
+    Limit* best = getBest();
+    // orderType BUY means BUY tree handling a sell order
+    // orderType SELLL means SELL tree handling a buy order
+    while (best != nullptr && order->getNumShares() > 0 && ((orderType == ORDER_TYPE::BUY && best->getLimitPrice() >= order->getLimitPrice()) || (orderType == ORDER_TYPE::SELL && best->getLimitPrice() <= order->getLimitPrice())))
+    {
+        best->fillOrder(order->getNumShares(), onFilled);
+        if (best->getOrderSize() == 0)
+        {
+            removeFromSet(best);
+            best = getBest();
+        }
+    }
+}
+
 
 
 template<ORDER_TYPE orderType> Limit * LimitManager<orderType>::getBest()
@@ -172,32 +214,31 @@ template<ORDER_TYPE orderType> Limit * LimitManager<orderType>::getBest()
  *
  */
 
-Order::Order(GUID idNumber, ORDER_TYPE orderType, unsigned int numShares, double limitPrice, Limit* parentLimit)
+Order::Order(GUID idNumber, ORDER_TYPE orderType, unsigned int numShares, double limitPrice)
 {
     this->idNumber = idNumber;
     this->orderType = orderType;
     this->numShares = numShares;
     this->limitPrice = limitPrice;
-    this->parentLimit = parentLimit;
 }
 
 
-unsigned int Order::getIdNumber()
+unsigned int Order::getIdNumber() const
 {
     return idNumber;
 }
 
-ORDER_TYPE Order::getOrderType()
+ORDER_TYPE Order::getOrderType() const
 {
     return orderType;
 }
 
-unsigned int Order::getNumShares()
+unsigned int& Order::getNumShares()
 {
     return numShares;
 }
 
-double Order::getLimitPrice()
+double Order::getLimitPrice() const
 {
     return limitPrice;
 }
