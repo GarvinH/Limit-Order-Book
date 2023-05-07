@@ -12,7 +12,7 @@ typedef unsigned int GUID; // replace with most appropriate type for GUIDs
 enum ORDER_TYPE { BUY = true, SELL = false };
 
 class Order;
-template<ORDER_TYPE> class LimitManager;
+class LimitManager;
 
 /**
  * @todo write docs
@@ -38,21 +38,23 @@ public:
     double getLimitPrice() const;
     bool operator<(const Limit &other) const;
     friend class Order;
-    template<ORDER_TYPE> friend class LimitManager;
+    friend class LimitManager;
 };
 
 struct LimitPointerComp
 {
-    bool operator()(const Limit* lhs, const Limit* rhs);
+    bool operator()(const Limit* lhs, const Limit* rhs) const;
 };
 
-template <ORDER_TYPE orderType>
 class LimitManager
 {
+    ORDER_TYPE orderType;
     set<Limit*, LimitPointerComp> limits;
     unordered_map<double, Limit*> priceLimitMap;
     void removeFromSet(Limit* limit);
 public:
+    LimitManager();
+    LimitManager(ORDER_TYPE orderType);
     void addOrder(Order *order);
     void cancelOrder(const Order *order);
 
@@ -60,7 +62,12 @@ public:
     void fillOrder(Order *order, void (*onFilled)(GUID orderId));
     Limit* getBest();
 
+    friend ostream& operator<<(ostream& os, const LimitManager &lm);
 };
+
+ostream& operator<<(ostream& os, const LimitManager &lm);
+
+
 
 class Order: public Node
 {

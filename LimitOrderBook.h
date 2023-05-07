@@ -12,10 +12,11 @@ using namespace std;
  */
 class LimitOrderBook
 {
-    LimitManager<ORDER_TYPE::BUY> bids;
-    LimitManager<ORDER_TYPE::SELL> asks;
+    LimitManager bids;
+    LimitManager asks;
     unordered_map<GUID, Order*> orderMap;
 public:
+    LimitOrderBook();
     bool limitBuy(GUID orderId, double price, unsigned int quantity);
     bool limitSell(GUID orderId, double price, unsigned int quantity);
     friend ostream& operator<<(ostream& os, const LimitOrderBook& book);

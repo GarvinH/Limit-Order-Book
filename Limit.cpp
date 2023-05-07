@@ -93,12 +93,27 @@ bool Limit::operator<(const Limit& other) const
  *
  */
 
-bool LimitPointerComp::operator()(const Limit* lhs, const Limit* rhs)
+LimitManager::LimitManager()
+{
+    // hack since using template on enum requires either moving
+    // all this code into the header
+    // and the below constructor isn't available to us
+    // when declaring a LimitManager inside another header file
+}
+
+
+LimitManager::LimitManager(ORDER_TYPE orderType)
+{
+    this->orderType = orderType;
+}
+
+
+bool LimitPointerComp::operator()(const Limit* lhs, const Limit* rhs) const
 {
     return *lhs < *rhs;
 }
 
-template<ORDER_TYPE orderType> void LimitManager<orderType>::removeFromSet(Limit* limit)
+void LimitManager::removeFromSet(Limit* limit)
 {
     set<Limit*>::iterator it = find(limits.begin(), limits.end(), limit);
     if (it != limits.end())
@@ -108,7 +123,7 @@ template<ORDER_TYPE orderType> void LimitManager<orderType>::removeFromSet(Limit
 }
 
 
-template<ORDER_TYPE orderType> void LimitManager<orderType>::addOrder(Order* order)
+void LimitManager::addOrder(Order* order)
 {
     if (orderType != order->getOrderType())
     {
@@ -140,7 +155,7 @@ template<ORDER_TYPE orderType> void LimitManager<orderType>::addOrder(Order* ord
     }
 }
 
-template<ORDER_TYPE orderType> void LimitManager<orderType>::cancelOrder(const Order* order)
+void LimitManager::cancelOrder(const Order* order)
 {
     if (orderType != order->getOrderType())
     {
@@ -160,7 +175,7 @@ template<ORDER_TYPE orderType> void LimitManager<orderType>::cancelOrder(const O
     }
 }
 
-template<ORDER_TYPE orderType> void LimitManager<orderType>::fillOrder(Order* order, void (*onFilled)(GUID orderId))
+void LimitManager::fillOrder(Order* order, void (*onFilled)(GUID orderId))
 {
     if (orderType == order->getOrderType())
     {
@@ -184,7 +199,7 @@ template<ORDER_TYPE orderType> void LimitManager<orderType>::fillOrder(Order* or
 
 
 
-template<ORDER_TYPE orderType> Limit * LimitManager<orderType>::getBest()
+Limit * LimitManager::getBest()
 {
     if (limits.empty())
     {
@@ -204,6 +219,16 @@ template<ORDER_TYPE orderType> Limit * LimitManager<orderType>::getBest()
     return nullptr;
 }
 
+ostream& operator<<(ostream& os, const LimitManager &lm)
+{
+    set<Limit*>::reverse_iterator rit = lm.limits.rbegin();
+    for (; rit != lm.limits.rend(); ++rit)
+    {
+        os << (*rit)->getLimitPrice() << " " << (*rit)->getTotalVolume() << endl;
+    }
+
+    return os;
+}
 
 
 /*
