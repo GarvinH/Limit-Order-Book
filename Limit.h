@@ -3,6 +3,7 @@
 
 #include <set>
 #include <unordered_map>
+#include <functional>
 #include "DoubleLinkedList.h"
 
 using namespace std;
@@ -27,7 +28,7 @@ class Limit
 
     void addOrder(Order *order);
     void cancelOrder(const Order *order);
-    void fillOrder(unsigned int &quantity, void (*onFill)(GUID orderId));
+    void fillOrder(unsigned int &quantity, std::function<void(GUID)> onFilled);
 public:
     Limit(double limitPrice);
     Limit(const Limit &other);
@@ -59,8 +60,9 @@ public:
     void cancelOrder(const Order *order);
 
     // takes order from opposite action
-    void fillOrder(Order *order, void (*onFilled)(GUID orderId));
+    void fillOrder(Order *order, std::function<void(GUID)> onFilled);
     Limit* getBest();
+    Limit* getLimit(double price);
 
     friend ostream& operator<<(ostream& os, const LimitManager &lm);
 };

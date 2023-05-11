@@ -41,7 +41,7 @@ void Limit::cancelOrder(const Order* order)
     orderSize--;
 }
 
-void Limit::fillOrder(unsigned int& quantity, void (*onFill)(GUID orderId))
+void Limit::fillOrder(unsigned int& quantity, std::function<void(GUID)> onFilled)
 {
     while (quantity > 0 && orderSize > 0)
     {
@@ -56,7 +56,7 @@ void Limit::fillOrder(unsigned int& quantity, void (*onFill)(GUID orderId))
             quantity -= headOrder->getNumShares();
             totalVolume -= headOrder->getNumShares();
             DoubleLinkedList::remove((Node**)&headOrder, (Node**)&tailOrder, (Node*)headOrder);
-            onFill(headOrder->getIdNumber());
+            onFilled(headOrder->getIdNumber());
             orderSize -= 1;
         }
     }
@@ -175,7 +175,7 @@ void LimitManager::cancelOrder(const Order* order)
     }
 }
 
-void LimitManager::fillOrder(Order* order, void (*onFilled)(GUID orderId))
+void LimitManager::fillOrder(Order* order, std::function<void(GUID)> onFilled)
 {
     if (orderType == order->getOrderType())
     {
@@ -218,6 +218,18 @@ Limit * LimitManager::getBest()
 
     return nullptr;
 }
+
+Limit * LimitManager::getLimit(double price)
+{
+    unordered_map<double, Limit*>::iterator it = priceLimitMap.find(price);
+    if (it == priceLimitMap.end())
+    {
+        return nullptr;
+    }
+
+    return priceLimitMap[price];
+}
+
 
 ostream& operator<<(ostream& os, const LimitManager &lm)
 {
