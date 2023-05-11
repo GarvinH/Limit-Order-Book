@@ -13,21 +13,22 @@ Two lists that track quantities of prices. Capable of tracking executions when p
 Built with inspiration from [this blog](https://web.archive.org/web/20110219163448/http://howtohft.wordpress.com/2011/02/15/how-to-build-a-fast-limit-order-book/).
 However, it does not attempt to meet the performance requirements expected of a Limit Order Book. This branch acts as a milepoint towards the "Optimal Performance" version of the LOB.
 
-Add - O(n) where n is the # of limits
-Cancel - O(m) where m is the # of orders within a limit
-Execute - Not implemented on this branch (ie, will be on Optimal Performance branch)
-GetVolumeAtLimit - Not implemented on this branch
-GetBestBid/Ask - Not implemented on this branch
+- Add - O(n) where n is the # of limits
+- Cancel - O(m) where m is the # of orders within a limit
+- Execute - Not implemented on this branch (ie, will be on Optimal Performance branch)
+- GetVolumeAtLimit - Not implemented on this branch
+- GetBestBid/Ask - Not implemented on this branch
 
 The reason for the slower run time is the use of STL data structures and some of the limitations forced on its API which lower performance when compared to manually implementing the data structures.
 
 ## Optimal Performance
 Builds off of "Limit and Order tracking" branch, but with performance aims of:
-Add - O(log n) for the first order at a limit, and O(1) for all others
-Cancel - O(1)
-Execute - O(1)
-GetVolumeAtLimit - O(1)
-GetBestBid/Ask - O(1)
+
+- Add - O(log n) for the first order at a limit, and O(1) for all others
+- Cancel - O(1)
+- Execute - O(1)
+- GetVolumeAtLimit - O(1)
+- GetBestBid/Ask - O(1)
 
 ## Usage
 ### C++
