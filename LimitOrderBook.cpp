@@ -1,22 +1,37 @@
 #include "LimitOrderBook.h"
 
-ostream& operator<<(ostream& os, LimitOrderBook& book)
+void LimitOrderBook::onOrderFilled(GUID orderId)
 {
-    set<Limit>::reverse_iterator mapRit;
-    for (mapRit = book.asks.rbegin(); mapRit != book.asks.rend(); ++mapRit)
-    {
-        os << mapRit->getLimitPrice() << " " << mapRit->getTotalVolume() << "\n";
-    }
+    // repository stuff and cleanup
 
-    os << "\n";
+    // save the order to repository
+    // cout << "Saved order " << orderId << " to repository" << endl;
 
-    for (mapRit = book.bids.rbegin(); mapRit != book.bids.rend(); ++mapRit)
+    // remove order from local memory
+    unordered_map<GUID, Order*>::iterator it = orderMap.find(orderId);
+    if (it != orderMap.end())
     {
-        os << mapRit->getLimitPrice() << " " << mapRit->getTotalVolume() << "\n";
+        delete it->second;
+        orderMap.erase(it);
     }
+}
+
+
+ostream& operator<<(ostream& os, const LimitOrderBook& book)
+{
+    os << book.asks;
+    os << endl;
+    os << book.bids;
 
     return os;
 }
+
+LimitOrderBook::LimitOrderBook()
+{
+    bids = LimitManager(ORDER_TYPE::BUY);
+    asks = LimitManager(ORDER_TYPE::SELL);
+}
+
 
 // returns true of successfully handled order (executed or added to book)
 bool LimitOrderBook::limitBuy(GUID orderId, double price, unsigned int quantity)
@@ -26,46 +41,12 @@ bool LimitOrderBook::limitBuy(GUID orderId, double price, unsigned int quantity)
         return false;
     }
 
+    Order *order = new Order(orderId, ORDER_TYPE::BUY, quantity, price);
+    asks.fillOrder(order, [&](GUID orderId) -> void {onOrderFilled(orderId);});
 
-    set<Limit>::iterator it;
-
-    // settle all fillable quantites
-    it = asks.begin();
-    while (it != asks.end() && it->getLimitPrice() <= price)
+    if (order->getNumShares() > 0)
     {
-        it->fillOrder(quantity);
-        if (it->getOrderSize() == 0)
-        {
-            asks.erase(it);
-            it = asks.begin();
-        }
-        else // left over orders on selling side means all buys are filled
-        {
-            return true;
-        }
-    }
-
-    // Leftover orders
-    for (it = bids.begin(); it != bids.end(); ++it)
-    {
-        if (it->getLimitPrice() == price)
-        {
-            break;
-        }
-    }
-
-    if (it != bids.end()) // if limit exists
-    {
-        Order order(orderId, BUY, quantity, &(*it));
-
-        it->addOrder(order);;
-    }
-    else
-    {
-        Limit limit(price);
-        Order order(orderId, BUY, quantity, &limit);
-        limit.addOrder(order);
-        bids.insert(limit);
+        bids.addOrder(order);
     }
 
     return true;
@@ -73,51 +54,95 @@ bool LimitOrderBook::limitBuy(GUID orderId, double price, unsigned int quantity)
 
 bool LimitOrderBook::limitSell(GUID orderId, double price, unsigned int quantity)
 {
-    if (price <= 0)
+    if (price < 0)
     {
         return false;
     }
 
-    set<Limit>::iterator it;
-    set<Limit>::reverse_iterator rit;
-    // settle all fillable quantites
-    rit = bids.rbegin();
-    while (rit != bids.rend() && rit->getLimitPrice() >= price)
-    {
-        rit->fillOrder(quantity);
-        if (rit->getOrderSize() == 0)
-        {
-            bids.erase(prev(bids.end()));
-            rit = bids.rbegin();
-        }
-        else // left over orders on selling side means all buys are filled
-        {
-            return true;
-        }
-    }
+    Order *order = new Order(orderId, ORDER_TYPE::SELL, quantity, price);
+    bids.fillOrder(order, [&](GUID orderId) -> void {onOrderFilled(orderId);});
 
-    // Leftover orders
-    for (it = asks.begin(); it != asks.end(); ++it)
+    if (order->getNumShares() > 0)
     {
-        if (it->getLimitPrice() == price)
-        {
-            break;
-        }
-    }
-
-    if (it != asks.end()) // if limit exists
-    {
-        Order order(orderId, SELL, quantity, &(*it));
-
-        it->addOrder(order);;
-    }
-    else
-    {
-        Limit limit(price);
-        Order order(orderId, SELL, quantity, &limit);
-        limit.addOrder(order);
-       asks.insert(limit);
+        asks.addOrder(order);
     }
 
     return true;
 }
+
+bool LimitOrderBook::marketBuy(GUID orderId, unsigned int quantity)
+{
+    return limitBuy(orderId, DBL_MAX, quantity);
+}
+
+bool LimitOrderBook::marketSell(GUID orderId, unsigned int quantity)
+{
+    return limitSell(orderId, 0, quantity);
+}
+
+double LimitOrderBook::getBestBuy()
+{
+    Limit* limit = bids.getBest();
+    if (limit == nullptr)
+    {
+        return -1;
+    }
+
+    return limit->getLimitPrice();
+}
+
+unsigned int LimitOrderBook::getBestBuyVolume()
+{
+    Limit* limit = bids.getBest();
+    if (limit == nullptr)
+    {
+        return 0;
+    }
+
+    return limit->getTotalVolume();
+}
+
+double LimitOrderBook::getBestSell()
+{
+    Limit* limit = asks.getBest();
+    if (limit == nullptr)
+    {
+        return -1;
+    }
+    return limit->getLimitPrice();
+}
+
+unsigned int LimitOrderBook::getBestSellVolume()
+{
+    Limit* limit = asks.getBest();
+    if (limit == nullptr)
+    {
+        return 0;
+    }
+
+    return limit->getTotalVolume();
+}
+
+unsigned int LimitOrderBook::getBuyVolume(double price)
+{
+    Limit* limit = bids.getLimit(price);
+    if (limit == nullptr)
+    {
+        return 0;
+    }
+
+    return limit->getTotalVolume();
+}
+
+unsigned int LimitOrderBook::getSellVolume(double price)
+{
+    Limit* limit = asks.getLimit(price);
+    if (limit == nullptr)
+    {
+        return 0;
+    }
+
+    return limit->getTotalVolume();
+}
+
+

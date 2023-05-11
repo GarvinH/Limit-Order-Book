@@ -8,6 +8,8 @@ LimitOrderBook.cpp
 LimitOrderBook.h
 Limit.cpp
 Limit.h
+DoubleLinkedList.cpp
+DoubleLinkedList.h
 )
 
 install(TARGETS limit-order-book RUNTIME DESTINATION bin)

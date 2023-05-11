@@ -1,69 +1,63 @@
 #include "Limit.h"
 #include <algorithm>
 
-LimitDetails::LimitDetails()
-{
-    totalVolume = 0;
-}
-
-LimitDetails::LimitDetails(const LimitDetails& other)
-{
-    totalVolume = other.totalVolume;
-    orderList = other.orderList;
-}
-
-
-
 Limit::Limit(double limitPrice)
 {
     this->limitPrice = limitPrice;
-    this->details = new LimitDetails();
+    totalVolume = 0;
+    orderSize = 0;
+    headOrder = nullptr;
+    tailOrder = nullptr;
 }
 
 Limit::Limit(const Limit &other)
 {
     this->limitPrice = other.limitPrice;
-    this->details = new LimitDetails(*other.details);
+    totalVolume = other.totalVolume;
+    orderSize = other.orderSize;
+    headOrder = other.headOrder;
+    tailOrder = other.tailOrder;
 }
 
 Limit::~Limit()
 {
-    delete this->details;
+    delete this->headOrder;
 }
 
 
-void Limit::addOrder(const Order& order) const
+void Limit::addOrder(Order* order)
 {
-    details->totalVolume += order.numShares;
+    totalVolume += order->numShares;
+    order->parentLimit = this;
 
-    details->orderList.push_back(order);
+    DoubleLinkedList::pushBack((Node**)&(headOrder), (Node**)&tailOrder, (Node*)order);
+    orderSize++;
 }
 
-void Limit::cancelOrder(const Order& order) const
+void Limit::cancelOrder(const Order* order)
 {
-    list<Order>::iterator it = find(details->orderList.begin(), details->orderList.end(), order);
-    if (it != details->orderList.end())
+    totalVolume -= order->numShares;
+    DoubleLinkedList::remove((Node**)&(headOrder), (Node**)&tailOrder, (Node*)order);
+    orderSize--;
+}
+
+void Limit::fillOrder(unsigned int& quantity, std::function<void(GUID)> onFilled)
+{
+    while (quantity > 0 && orderSize > 0)
     {
-        details->totalVolume -= order.numShares;
-        details->orderList.erase(it);
-    }
-}
-
-void Limit::fillOrder(unsigned int& quantity) const
-{
-    while (quantity > 0 && !details->orderList.empty())
-    {
-        if (details->orderList.begin()->getNumShares() > quantity)
+        if (headOrder->getNumShares() > quantity)
         {
-            details->orderList.begin()->numShares -= quantity;
-            details->totalVolume -= quantity;
+            headOrder->numShares -= quantity;
+            totalVolume -= quantity;
             quantity = 0;
         }
         else
         {
-            quantity -= details->orderList.begin()->getNumShares();
-            details->totalVolume -= details->orderList.begin()->getNumShares();
-            details->orderList.erase(details->orderList.begin());
+            quantity -= headOrder->getNumShares();
+            totalVolume -= headOrder->getNumShares();
+            DoubleLinkedList::remove((Node**)&headOrder, (Node**)&tailOrder, (Node*)headOrder);
+            onFilled(headOrder->getIdNumber());
+            orderSize -= 1;
         }
     }
 }
@@ -71,12 +65,12 @@ void Limit::fillOrder(unsigned int& quantity) const
 
 unsigned int Limit::getOrderSize() const
 {
-    return details->orderList.size();
+    return orderSize;
 }
 
 unsigned int Limit::getTotalVolume() const
 {
-    return details->totalVolume;
+    return totalVolume;
 }
 
 double Limit::getLimitPrice() const
@@ -95,35 +89,205 @@ bool Limit::operator<(const Limit& other) const
  *
  * Limit
  * --------------------------------------------------------------------------
+ * LimitManager
+ *
+ */
+
+LimitManager::LimitManager()
+{
+    // hack since using template on enum requires either moving
+    // all this code into the header
+    // and the below constructor isn't available to us
+    // when declaring a LimitManager inside another header file
+}
+
+
+LimitManager::LimitManager(ORDER_TYPE orderType)
+{
+    this->orderType = orderType;
+}
+
+
+bool LimitPointerComp::operator()(const Limit* lhs, const Limit* rhs) const
+{
+    return *lhs < *rhs;
+}
+
+void LimitManager::removeFromSet(Limit* limit)
+{
+    set<Limit*>::iterator it = find(limits.begin(), limits.end(), limit);
+    if (it != limits.end())
+    {
+        limits.erase(it);
+    }
+}
+
+
+void LimitManager::addOrder(Order* order)
+{
+    if (orderType != order->getOrderType())
+    {
+        cout << "Error: trying to add order to the wrong side of the book" << endl;
+        return;
+    }
+
+    unordered_map<double, Limit*>::const_iterator it = priceLimitMap.find(order->getLimitPrice());
+
+    // limit doesn't exist yet
+    if (it == priceLimitMap.end())
+    {
+        Limit *limit = new Limit(order->getLimitPrice());
+        limit->addOrder(order);
+
+        limits.insert(limit);
+        priceLimitMap[order->getLimitPrice()] = limit;
+    }
+    else // limit exists
+    {
+        Limit *limit = priceLimitMap[order->getLimitPrice()];
+
+        if (limit->getOrderSize() == 0)
+        {
+            limits.insert(limit);
+        }
+
+        limit->addOrder(order);
+    }
+}
+
+void LimitManager::cancelOrder(const Order* order)
+{
+    if (orderType != order->getOrderType())
+    {
+        cout << "Error: tried to remove an order from the wrong side of the book" << endl;
+        return;
+    }
+
+    Limit *parentLimit = order->getParentLimit();
+    if (parentLimit != nullptr)
+    {
+        parentLimit->cancelOrder(order);
+
+        if (parentLimit->getOrderSize() == 0)
+        {
+            removeFromSet(parentLimit);
+        }
+    }
+}
+
+void LimitManager::fillOrder(Order* order, std::function<void(GUID)> onFilled)
+{
+    if (orderType == order->getOrderType())
+    {
+        cout << "Error: trying to fill an order on the same side of the book" << endl;
+        return;
+    }
+
+    Limit* best = getBest();
+    // orderType BUY means BUY tree handling a sell order
+    // orderType SELLL means SELL tree handling a buy order
+    while (best != nullptr && order->getNumShares() > 0 && ((orderType == ORDER_TYPE::BUY && best->getLimitPrice() >= order->getLimitPrice()) || (orderType == ORDER_TYPE::SELL && best->getLimitPrice() <= order->getLimitPrice())))
+    {
+        best->fillOrder(order->getNumShares(), onFilled);
+        if (best->getOrderSize() == 0)
+        {
+            removeFromSet(best);
+            best = getBest();
+        }
+    }
+}
+
+
+
+Limit * LimitManager::getBest()
+{
+    if (limits.empty())
+    {
+        return nullptr;
+    }
+
+    switch(orderType)
+    {
+        case ORDER_TYPE::BUY:
+            return *limits.rbegin();
+            break;
+        case ORDER_TYPE::SELL:
+            return *limits.begin();
+            break;
+    }
+
+    return nullptr;
+}
+
+Limit * LimitManager::getLimit(double price)
+{
+    unordered_map<double, Limit*>::iterator it = priceLimitMap.find(price);
+    if (it == priceLimitMap.end())
+    {
+        return nullptr;
+    }
+
+    return priceLimitMap[price];
+}
+
+
+ostream& operator<<(ostream& os, const LimitManager &lm)
+{
+    set<Limit*>::reverse_iterator rit = lm.limits.rbegin();
+    for (; rit != lm.limits.rend(); ++rit)
+    {
+        os << (*rit)->getLimitPrice() << " " << (*rit)->getTotalVolume() << endl;
+    }
+
+    return os;
+}
+
+
+/*
+ *
+ * LimitManager
+ * --------------------------------------------------------------------------
  * Order
  *
  */
 
-Order::Order(GUID idNumber, ORDER_TYPE orderType, unsigned int numShares, const Limit* parentLimit):parentLimit(parentLimit)
+Order::Order(GUID idNumber, ORDER_TYPE orderType, unsigned int numShares, double limitPrice)
 {
     this->idNumber = idNumber;
     this->orderType = orderType;
     this->numShares = numShares;
-    // this->parentLimit = parentLimit;
+    this->limitPrice = limitPrice;
 }
 
 
-unsigned int Order::getIdNumber()
+unsigned int Order::getIdNumber() const
 {
     return idNumber;
 }
 
-ORDER_TYPE Order::getOrderType()
+ORDER_TYPE Order::getOrderType() const
 {
     return orderType;
 }
 
-unsigned int Order::getNumShares()
+unsigned int& Order::getNumShares()
 {
     return numShares;
 }
+
+double Order::getLimitPrice() const
+{
+    return limitPrice;
+}
+
 
 bool Order::operator==(const Order& other)
 {
     return idNumber == other.idNumber;
 }
+
+Limit * Order::getParentLimit() const
+{
+    return parentLimit;
+}
+

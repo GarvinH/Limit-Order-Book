@@ -1,23 +1,19 @@
 #ifndef LIMIT_H
 #define LIMIT_H
 
-#include <list>
+#include <set>
+#include <unordered_map>
+#include <functional>
+#include "DoubleLinkedList.h"
 
 using namespace std;
+using namespace DoubleLinkedList;
+
+typedef unsigned int GUID; // replace with most appropriate type for GUIDs
+enum ORDER_TYPE { BUY = true, SELL = false };
 
 class Order;
-
-// placeholder solution because of std::set forcing constant values
-class LimitDetails
-{
-    unsigned int totalVolume;
-    list<Order> orderList;
-public:
-    LimitDetails();
-    LimitDetails(const LimitDetails &other);
-
-    friend class Limit;
-};
+class LimitManager;
 
 /**
  * @todo write docs
@@ -25,42 +21,73 @@ public:
 class Limit
 {
     double limitPrice;
-    // unsigned int orderSize;
-    // unsigned int totalVolume;
-    // list<Order> orderList;
-    LimitDetails *details; // see comment on limit details class
+    unsigned int orderSize;
+    unsigned int totalVolume;
+    Order *headOrder;
+    Order *tailOrder;
 
+    void addOrder(Order *order);
+    void cancelOrder(const Order *order);
+    void fillOrder(unsigned int &quantity, std::function<void(GUID)> onFilled);
 public:
     Limit(double limitPrice);
     Limit(const Limit &other);
     ~Limit();
-    void addOrder(const Order &order) const;
-    void cancelOrder(const Order &order) const;
-    void fillOrder(unsigned int &quantity) const;
+
     unsigned int getOrderSize() const;
     unsigned int getTotalVolume() const;
     double getLimitPrice() const;
     bool operator<(const Limit &other) const;
     friend class Order;
+    friend class LimitManager;
 };
 
-typedef unsigned int GUID; // replace with most appropriate type for GUIDs
-enum ORDER_TYPE { BUY = true, SELL = false };
+struct LimitPointerComp
+{
+    bool operator()(const Limit* lhs, const Limit* rhs) const;
+};
 
-class Order
+class LimitManager
+{
+    ORDER_TYPE orderType;
+    set<Limit*, LimitPointerComp> limits;
+    unordered_map<double, Limit*> priceLimitMap;
+    void removeFromSet(Limit* limit);
+public:
+    LimitManager();
+    LimitManager(ORDER_TYPE orderType);
+    void addOrder(Order *order);
+    void cancelOrder(const Order *order);
+
+    // takes order from opposite action
+    void fillOrder(Order *order, std::function<void(GUID)> onFilled);
+    Limit* getBest();
+    Limit* getLimit(double price);
+
+    friend ostream& operator<<(ostream& os, const LimitManager &lm);
+};
+
+ostream& operator<<(ostream& os, const LimitManager &lm);
+
+
+
+class Order: public Node
 {
     GUID idNumber;
     ORDER_TYPE orderType;
     unsigned int numShares;
+    double limitPrice;
     // unsigned int entryTime;
     // unsigned int eventTime;
-    const Limit *parentLimit;
+    Limit *parentLimit;
 public:
-    Order(GUID idNumber, ORDER_TYPE orderType, unsigned int numShares, const Limit *parentLimit);
-    unsigned int getIdNumber();
-    ORDER_TYPE getOrderType();
-    unsigned int getNumShares();
+    Order(GUID idNumber, ORDER_TYPE orderType, unsigned int numShares, double limitPrice);
+    unsigned int getIdNumber() const;
+    ORDER_TYPE getOrderType() const;
+    unsigned int& getNumShares();
+    double getLimitPrice() const;
     bool operator==(const Order &other);
+    Limit* getParentLimit() const;
 
     friend class Limit;
 };
